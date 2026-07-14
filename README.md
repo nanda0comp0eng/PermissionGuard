@@ -1,5 +1,7 @@
 # Permission Guard
 
+# https://github.com/nanda0comp0eng/PermissionGuard/blob/main/PermissionGuard.apk
+
 Permission Guard adalah aplikasi Android modern yang membantu pengguna memantau, menganalisis, dan memahami izin (permission) yang dideklarasikan oleh aplikasi-aplikasi yang terpasang di perangkat mereka. Aplikasi ini mendeteksi instalasi dan pembaruan aplikasi secara real-time, membandingkan permission baru dengan snapshot sebelumnya, lalu mengirimkan notifikasi sistem jika terdeteksi adanya izin yang berisiko tinggi.
 
 Seluruh fitur dibangun hanya menggunakan Android Public API resmi tanpa memerlukan akses root.
