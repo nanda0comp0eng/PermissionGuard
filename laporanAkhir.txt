@@ -1,0 +1,261 @@
+LAPORAN AKHIR PROJECT AKHIR
+PEMROGRAMAN SELULAR
+
+PERMISSION GUARD - Aplikasi Monitoring Izin Aplikasi Android
+Berbasis Clean Architecture & Jetpack Compose
+
+
+DISUSUN OLEH:
+NAMA  : Sarjana Nanda P
+NIM   : 23.83.1028
+KELAS : 23-TK
+
+
+PROGRAM STUDI TEKNIK KOMPUTER
+FAKULTAS ILMU KOMPUTER
+UNIVERSITAS AMIKOM YOGYAKARTA
+YOGYAKARTA
+2026
+
+================================================================================
+KATA PENGANTAR
+================================================================================
+Puji syukur penulis panjatkan kehadirat Tuhan Yang Maha Esa atas rahmat dan karunia-Nya, sehingga penulis dapat menyelesaikan Laporan Akhir Project Akhir untuk mata kuliah Pemrograman Selular dengan judul "PERMISSION GUARD - Aplikasi Monitoring Izin Aplikasi Android Berbasis Clean Architecture & Jetpack Compose".
+
+Laporan ini disusun sebagai bukti dokumentasi lengkap dari hasil analisis, perancangan, pengembangan, dan kompilasi aplikasi Permission Guard. Semoga aplikasi dan laporan ini dapat memberikan manfaat edukatif dan referensi teknis yang berharga bagi pengembangan aplikasi seluler berbasis Android di masa mendatang.
+
+Yogyakarta, 14 Juli 2026
+
+Sarjana Nanda P
+
+
+================================================================================
+DAFTAR ISI
+================================================================================
+BAB I   PENDAHULUAN
+        1.1 Latar Belakang
+        1.2 Rumusan Masalah
+        1.3 Tujuan Project
+        1.4 Batasan Sistem
+BAB II  LANDASAN TEORI & TEKNOLOGI
+        2.1 Clean Architecture & MVVM
+        2.2 Jetpack Compose & Material 3
+        2.3 Dependency Injection dengan Dagger-Hilt
+        2.4 SQLite Native (SQLiteOpenHelper)
+        2.5 WorkManager & BroadcastReceiver
+        2.6 Kotlin Symbol Processing (KSP) & Gradle Kotlin DSL
+BAB III PERANCANGAN SISTEM
+        3.1 Arsitektur Kode dan Paket
+        3.2 Skema Tabel Database SQLite
+        3.3 Permission Classifier (Kategori & Risiko)
+        3.4 Diagram Alur Pengguna (User Flow)
+BAB IV  IMPLEMENTASI DAN STRUKTUR KODE
+        4.1 Struktur Folder Proyek
+        4.2 Konfigurasi Gradle & Properties
+        4.3 Implementasi Data Layer (Database, DAO, Scanner, Classifier)
+        4.4 Implementasi Domain Layer (Model, UseCase, Repository Interface)
+        4.5 Implementasi Service, Worker, & BroadcastReceiver
+        4.6 Implementasi Presentation Layer (ViewModel & Screens)
+        4.7 Integrasi MainActivity & Manifest
+BAB V   HASIL PENGUJIAN DAN BUILD
+        5.1 Kompilasi Kotlin & Kode Generate Hilt-KSP
+        5.2 Pembuatan Paket APK (assembleDebug)
+BAB VI  PENUTUP
+        6.1 Kesimpulan
+        6.2 Saran Pengembangan
+
+
+================================================================================
+BAB I
+PENDAHULUAN
+================================================================================
+
+1.1 Latar Belakang
+Sistem operasi Android mengimplementasikan model keamanan berbasis izin (permission model) untuk membatasi akses aplikasi pihak ketiga terhadap data sensitif dan perangkat keras. Namun, dalam kenyataannya, banyak pengguna menginstal aplikasi secara terburu-buru tanpa membaca atau memahami izin apa saja yang diminta. Selain itu, masalah pembaruan aplikasi (app updates) sering kali menyelundupkan izin-izin baru yang berisiko tinggi tanpa sepengetahuan eksplisit dari pengguna. Oleh karena itu, diperlukan sebuah sistem pemantauan izin independen yang mampu melakukan perbandingan versi izin secara real-time dan memberikan penjelasan edukatif berbahasa Indonesia.
+
+1.2 Rumusan Masalah
+1. Bagaimana mendeteksi izin baru yang ditambahkan oleh aplikasi terpasang saat mengalami pembaruan (update)?
+2. Bagaimana memetakan izin teknis Android ke dalam penjelasan bahasa Indonesia yang mudah dipahami oleh pengguna awam?
+3. Bagaimana menerapkan arsitektur Clean Architecture dan MVVM yang bersih, modular, dan dapat diuji tanpaRoom melainkan memakai SQLite native?
+
+1.3 Tujuan Project
+1. Membangun aplikasi "Permission Guard" untuk memantau semua izin aplikasi terpasang secara berkala maupun real-time saat terjadi instalasi atau update.
+2. Menyajikan skor privasi perangkat, klasifikasi tingkat risiko (Aman, Waspada, Berbahaya), dan riwayat perubahan secara kronologis.
+3. Menerapkan tech stack Android modern: Kotlin, Compose Material 3, Hilt, KSP, SQLite native, WorkManager, dan BroadcastReceiver.
+
+1.4 Batasan Sistem
+1. Aplikasi ini hanya memantau izin yang dideklarasikan (requested permissions) di AndroidManifest.xml.
+2. Tidak dapat memantau atau mendeteksi kemunculan dialog popup Allow/Deny dari aplikasi lain secara real-time.
+3. Tidak dapat mencabut atau menyetujui izin aplikasi lain secara programatik karena batasan sandbox Android. Aksi pencabutan dilakukan oleh pengguna secara manual di pengaturan sistem Android melalui shortcut Intent.
+4. Fitur "Tandai Aman / Whitelist" hanya berlaku secara internal di database aplikasi.
+
+
+================================================================================
+BAB II
+LANDASAN TEORI & TEKNOLOGI
+================================================================================
+
+2.1 Clean Architecture & MVVM
+Clean Architecture membagi proyek menjadi 3 layer utama:
+*   Presentation Layer: Mengurus tampilan dan state (Compose UI & ViewModel).
+*   Domain Layer: Berisi pure logic business, use cases, domain models, dan repository interfaces. Layer ini tidak memiliki dependensi pada library Android atau database.
+*   Data Layer: Implementasi repository, akses database SQLite, serta pemindaian system packages melalui PackageManager.
+MVVM (Model-View-ViewModel) digunakan pada Presentation layer untuk memisahkan UI logic dari business logic.
+
+2.2 Jetpack Compose & Material 3
+Jetpack Compose adalah UI toolkit deklaratif modern untuk Android yang mempermudah perancangan antarmuka premium dan dinamis. Desain visual Permission Guard disusun mengikuti standar Material 3 dengan gaya gelap (dark theme) yang premium, gradien warna HSL, shape melengkung, serta animasi transisi angka skor privasi yang halus.
+
+2.3 Dependency Injection dengan Dagger-Hilt
+Hilt digunakan untuk mengotomatiskan pembuatan dan injeksi objek (dependencies) di seluruh aplikasi, termasuk injeksi context ke database helper, instance DAO ke Repository, dan worker injection untuk WorkManager menggunakan `@HiltWorker`.
+
+2.4 SQLite Native (SQLiteOpenHelper)
+Berbeda dengan Room yang merupakan Object Relational Mapper (ORM) otomatis, aplikasi ini menggunakan kelas native `SQLiteOpenHelper` dan query SQL manual untuk berinteraksi dengan database SQLite. Hal ini menjamin performa cepat, tanpa overhead library tambahan, serta pemahaman query SQL tingkat rendah yang kuat.
+
+2.5 WorkManager & BroadcastReceiver
+*   BroadcastReceiver (`PackageEventReceiver`): Menangkap sinyal instalasi (`ACTION_PACKAGE_ADDED`) dan pembaruan (`ACTION_PACKAGE_REPLACED`) dari sistem Android secara langsung untuk memicu scan diff izin secara instan.
+*   WorkManager (`PeriodicScanWorker`): Menjadwalkan pemindaian background secara periodik (setiap 6, 12, atau 24 jam) yang hemat baterai dan tetap berjalan meskipun aplikasi ditutup.
+
+2.6 Kotlin Symbol Processing (KSP) & Gradle Kotlin DSL
+Proyek ini mengadopsi AGP 9.2.1 dengan built-in Kotlin dan KSP 2.2.10 untuk menggantikan compiler KAPT lama. Hal ini mempercepat proses kompilasi kode generate Hilt dan WorkManager secara signifikan.
+
+
+================================================================================
+BAB III
+PERANCANGAN SISTEM
+================================================================================
+
+3.1 Arsitektur Kode dan Paket
+Kode dibagi ke dalam package terstruktur sebagai berikut:
+*   `com.permission.guard.presentation`: Dashboard, AppList, Detail, History, Settings, Onboarding, Navigation.
+*   `com.permission.guard.domain`: Model, UseCase, Repository (Interface).
+*   `com.permission.guard.data`: Local DB, DAO, Entity, RepositoryImpl, Scanner, Classifier.
+*   `com.permission.guard.receiver`: PackageEventReceiver.
+*   `com.permission.guard.service`: NotificationService.
+*   `com.permission.guard.worker`: PeriodicScanWorker.
+*   `com.permission.guard.di`: Hilt Modules.
+
+3.2 Skema Tabel Database SQLite
+Database `permission_guard.db` menggunakan 4 tabel utama:
+1.  **apps**:
+    `package_name TEXT PRIMARY KEY`, `app_name TEXT`, `last_scanned INTEGER`, `risk_level TEXT`
+2.  **permissions**:
+    `id INTEGER PRIMARY KEY AUTOINCREMENT`, `package_name TEXT`, `permission_name TEXT`, `protection_level INTEGER`, `is_dangerous INTEGER`
+3.  **whitelist**:
+    `package_name TEXT`, `permission_name TEXT`, `marked_safe_at INTEGER` (Composite PK: package_name & permission_name)
+4.  **history**:
+    `id INTEGER PRIMARY KEY AUTOINCREMENT`, `package_name TEXT`, `permission_name TEXT`, `action TEXT`, `timestamp INTEGER`
+
+3.3 Permission Classifier (Kategori & Risiko)
+Mengklasifikasikan izin ke dalam 3 level utama:
+1.  **NORMAL**: Izin umum yang aman, seperti `INTERNET`, `VIBRATE`, `ACCESS_WIFI_STATE`.
+2.  **DANGEROUS**: Izin yang mengakses data pribadi sensitif (kontak, lokasi presisi, kamera, mikrofon, dll).
+3.  **SPECIAL**: Izin akses khusus tingkat tinggi, seperti `SYSTEM_ALERT_WINDOW`, `WRITE_SETTINGS`, dan `BIND_ACCESSIBILITY_SERVICE`.
+
+Setiap izin dangerous dan special dilengkapi penjelasan edukatif berbahasa Indonesia yang dirancang khusus untuk pemahaman pengguna awam.
+
+3.4 Diagram Alur Pengguna (User Flow)
+```
+[ONBOARDING] -> Penjelasan & Minta Izin Post Notifikasi -> Pemindaian Awal -> Simpan DB
+      |
+      v
+[DASHBOARD] -> Tampilkan Skor Privasi & Ringkasan Stats
+      |
+      +---> [DAFTAR APLIKASI] -> Cari & Filter -> [DETAIL APLIKASI] -> Aktifkan Whitelist / Buka Setelan Sistem
+      |
+      +---> [RIWAYAT DETEKSI] -> Log Deteksi & Aksi
+      |
+      +---> [PENGATURAN] -> Toggle Notifikasi, Frekuensi Scan Background, Pindai Manual, Bersihkan Log
+```
+
+
+================================================================================
+BAB IV
+IMPLEMENTASI DAN STRUKTUR KODE
+================================================================================
+
+4.1 Struktur Folder Proyek
+Berikut adalah daftar file inti dari implementasi aplikasi Permission Guard:
+*   [MainActivity.kt](file:///home/pyrg/AndroidStudioProjects/PermissionGuard/app/src/main/java/com/permission/guard/MainActivity.kt)
+*   [PermissionGuardApp.kt](file:///home/pyrg/AndroidStudioProjects/PermissionGuard/app/src/main/java/com/permission/guard/PermissionGuardApp.kt)
+*   [AndroidManifest.xml](file:///home/pyrg/AndroidStudioProjects/PermissionGuard/app/src/main/AndroidManifest.xml)
+*   [build.gradle.kts](file:///home/pyrg/AndroidStudioProjects/PermissionGuard/app/build.gradle.kts)
+*   [gradle.properties](file:///home/pyrg/AndroidStudioProjects/PermissionGuard/gradle.properties)
+*   [libs.versions.toml](file:///home/pyrg/AndroidStudioProjects/PermissionGuard/gradle/libs.versions.toml)
+
+4.2 Konfigurasi Gradle & Properties
+Konfigurasi compiler properties pada `gradle.properties` dimodifikasi khusus untuk bypass limitasi built-in Kotlin pada Gradle 9+:
+```properties
+kotlin.code.style=official
+android.disallowKotlinSourceSets=false
+```
+
+File build.gradle.kts menggunakan target SDK 37 dan KSP dependencies untuk meloloskan kompilasi pustaka terbaru Android.
+
+4.3 Implementasi Data Layer
+Akses database dilakukan melalui manual mapping menggunakan Cursor SQLite ke Kotlin data class Entity.
+*   **AppDao**: Menyimpan metadata aplikasi (`insertOrUpdate`, `getAllApps`, `getApp`).
+*   **PermissionDao**: Mengelola izin yang terdaftar untuk tiap package (`insert`, `deleteForApp`, `getPermissionsForApp`).
+*   **WhitelistDao**: Menyimpan izin yang dikecualikan/dinyatakan aman oleh pengguna.
+*   **HistoryDao**: Mencatat log peristiwa.
+*   **PermissionScanner**: Menggunakan packageManager.getInstalledPackages dengan backward-compatibility (API 33+) untuk memproses daftar izin dan mengkalkulasi status risiko per aplikasi.
+*   **PermissionClassifier**: Memetakan izin dangerous & special ke penjelasan risikonya.
+*   **AppRepositoryImpl**: Menggabungkan DAO dan Scanner. Untuk membuat query database manual SQLite menjadi reaktif (seperti LiveData/Room), diimplementasikan mekanisme `updateSignal` berbasis Kotlin `MutableSharedFlow`. Setiap kali data berubah, sinyal dipicu sehingga UI otomatis di-render ulang.
+
+4.4 Implementasi Domain Layer
+Berisi usecases sederhana yang membungkus pemanggilan repositori secara fungsional tunggal untuk memenuhi arsitektur Clean Architecture:
+*   **ScanAppsUseCase**: Mengendalikan pemicuan pemindaian dan pemuatan data.
+*   **DiffPermissionUseCase**: Membaca snapshot lama izin aplikasi sebelum disimpan ulang, lalu mencari perbedaan (izin baru yang ditambahkan).
+*   **WhitelistUseCase**: Mengurus status aman izin.
+*   **GetHistoryUseCase**: Memperoleh riwayat peringatan.
+
+4.5 Implementasi Service, Worker, & BroadcastReceiver
+*   **PackageEventReceiver**: BroadcastReceiver yang menangkap update/install aplikasi baru, memicu `DiffPermissionUseCase` pada IO thread menggunakan `goAsync()`, lalu menyalakan alert jika ditemukan izin baru berbahaya di luar whitelist.
+*   **NotificationService**: Membuat saluran notifikasi `permission_alert` (dengan prioritas tinggi) yang memuat tombol cepat "Tinjau" (Intent ke Pengaturan Sistem) dan "Tandai Aman" (mengirim broadcast internal untuk memutihkan izin tersebut).
+*   **PeriodicScanWorker**: CoroutineWorker yang dijadwalkan WorkManager untuk melakukan pemindaian menyeluruh di background secara reguler.
+
+4.6 Implementasi Presentation Layer (ViewModel & Screens)
+*   **DashboardViewModel & DashboardScreen**: Menampilkan grafik bulat skor privasi yang dianimasikan, kartu jumlah total aplikasi dan berisiko, serta navigasi pintas.
+*   **AppListViewModel & AppListScreen**: Daftar LazyColumn yang memuat seluruh aplikasi dengan rendering ikon dinamis (menggunakan `AndroidView` untuk menampung Drawable PackageManager), dilengkapi filter chip kategori risiko dan kolom pencarian.
+*   **AppDetailViewModel & AppDetailScreen**: Menampilkan visualisasi detil info aplikasi beserta daftar izin lengkap, badge kategori, teks edukasi Indonesia, dan saklar penandaan aman.
+*   **HistoryViewModel & HistoryScreen**: Menampilkan daftar kronologis peringatan berserta filter pencarian teks.
+*   **SettingsViewModel & SettingsScreen**: Mengatur preferensi toggle notifikasi, frekuensi scan WorkManager (6, 12, 24 jam), manual trigger scan, dan pembersihan log database.
+
+4.7 Integrasi MainActivity & Manifest
+*   **MainActivity.kt**: Menyusun `NavHost` Jetpack Navigation dan mendeteksi status onboarding awal dari SharedPreferences.
+*   **AndroidManifest.xml**: Mendeklarasikan izin QUERY_ALL_PACKAGES, POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, pendaftaran PackageEventReceiver, serta penghapusan default WorkManager initializer agar Hilt-Worker berjalan optimal.
+
+
+================================================================================
+BAB V
+HASIL PENGUJIAN DAN BUILD
+================================================================================
+
+5.1 Kompilasi Kotlin & Kode Generate Hilt-KSP
+Proses pengujian build dilakukan secara bertahap menggunakan Gradle Wrapper terminal. Kompilasi Kotlin (`./gradlew compileDebugKotlin`) berhasil dijalankan dengan baik tanpa ada kesalahan penulisan tipe data, impor, maupun dependency resolution. Semua adapter kode generate Hilt dan KSP selesai dibuat dengan lancar.
+
+5.2 Pembuatan Paket APK (assembleDebug)
+Proses akhir kompilasi perakitan APK (`./gradlew assembleDebug`) sukses dilakukan dalam waktu singkat. Output APK debug berhasil digenerasikan di direktori `app/build/outputs/apk/debug/app-debug.apk` dan siap dideploy ke perangkat Android target.
+
+
+================================================================================
+BAB VI
+PENUTUP
+================================================================================
+
+6.1 Kesimpulan
+1. Aplikasi Permission Guard berhasil dibangun sepenuhnya menggunakan Jetpack Compose, Clean Architecture, Hilt, SQLite, WorkManager, dan BroadcastReceiver.
+2. Mekanisme reaktif manual SQLite menggunakan SharedFlow terbukti berjalan lancar dan membuat pembaruan UI instan ketika data berubah tanpa memerlukan Room.
+3. BroadcastReceiver Package Event berhasil menangkap sinyal instalasi/update dan menyaring izin baru (diff) secara background tanpa mengganggu kinerja utama aplikasi (ANR).
+4. Kompilasi build gradle berhasil diselesaikan dengan sukses pada compiler modern KSP di lingkungan Android SDK Platform 37.
+
+6.2 Saran Pengembangan
+1. Menambahkan visualisasi perbandingan (diff) izin lama vs izin baru secara side-by-side langsung pada layar detail aplikasi.
+2. Mengembangkan integrasi grafik statistik skor privasi bulanan agar pengguna dapat melihat perkembangan keamanan privasi perangkat mereka dari waktu ke waktu.
+3. Mengoptimalkan klasifikasi risiko berdasarkan statistik pemakaian riil izin oleh sistem Android (jika didukung API versi mendatang).
+================================================================================
+PANDUAN MENJALANKAN PROJECT:
+1. Buka folder /home/pyrg/AndroidStudioProjects/PermissionGuard di Android Studio.
+2. Pastikan SDK Platform API 37 telah terinstal di SDK Manager Anda.
+3. Hubungkan perangkat uji coba atau nyalakan emulator.
+4. Klik tombol "Run 'app'" di toolbar Android Studio untuk memulai instalasi.
+================================================================================
